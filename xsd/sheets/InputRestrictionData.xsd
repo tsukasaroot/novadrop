@@ -42,7 +42,7 @@
 
     <xsd:complexType name="InputRestrictionData_RegularExpressions">
         <xsd:sequence>
-            <xsd:element name="RegularExpression" type="InputRestrictionData_RegularExpressions_RegularExpression" maxOccurs="unbounded" />
+            <xsd:element name="RegularExpression" type="InputRestrictionData_RegularExpressions_RegularExpression" minOccurs="0" maxOccurs="unbounded" />
         </xsd:sequence>
     </xsd:complexType>
 
