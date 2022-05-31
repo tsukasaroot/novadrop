@@ -1,5 +1,10 @@
 # Novadrop
 
+<div align="center">
+    <img src="novadrop.svg"
+         width="128" />
+</div>
+
 <p align="center">
     <strong>
         A developer toolkit for interacting with and modifying the TERA game
@@ -9,7 +14,7 @@
 
 <div align="center">
 
-[![License](https://img.shields.io/github/license/vezel-dev/novadrop?color=brown)](LICENSE.md)
+[![License](https://img.shields.io/github/license/vezel-dev/novadrop?color=brown)](LICENSE-0BSD)
 [![Commits](https://img.shields.io/github/commit-activity/m/vezel-dev/novadrop/master?label=commits&color=slateblue)](https://github.com/vezel-dev/novadrop/commits/master)
 [![Build](https://img.shields.io/github/workflow/status/vezel-dev/novadrop/Build/master)](https://github.com/vezel-dev/novadrop/actions/workflows/build.yml)
 [![Discussions](https://img.shields.io/github/discussions/vezel-dev/novadrop?color=teal)](https://github.com/vezel-dev/novadrop/discussions)
@@ -40,7 +45,7 @@ This project offers the following packages:
 | [![novadrop-dc][dc-img]][dc-pkg] | Provides the .NET global tool for manipulating TERA's data center files. | ![Downloads][dc-dls] |
 | [![novadrop-gpk][gpk-img]][gpk-pkg] | Provides the .NET global tool for manipulating TERA's GPK archive files. | ![Downloads][gpk-dls] |
 | [![novadrop-rsc][rsc-img]][rsc-pkg] | Provides the .NET global tool for manipulating TERA's resource container files. | ![Downloads][rsc-dls] |
-| [![novadrop-run][run-img]][run-pkg] | Provides the .NET global tool for launching the TERA client from the command line. | ![Downloads][run-dls] |
+| [![novadrop-run][run-img]][run-pkg] | Provides the .NET global tool for running the TERA launcher or client from the command line. | ![Downloads][run-dls] |
 | [![novadrop-scan][scan-img]][scan-pkg] | Provides the .NET global tool for extracting useful data from a running TERA client. | ![Downloads][scan-dls] |
 | [![Vezel.Novadrop.Client][client-img]][client-pkg] | Provides support for interacting with the TERA launcher and client. | ![Downloads][client-dls] |
 | [![Vezel.Novadrop.Common][common-img]][common-pkg] | Provides common functionality used by all Novadrop packages. | ![Downloads][common-dls] |
@@ -81,3 +86,11 @@ To install a tool package in a project, run `dotnet tool install <name>`. To
 install it globally, also pass `-g`.
 
 To install a library package, run `dotnet add package <name>`.
+
+For more information, please visit the
+[project home page](https://docs.vezel.dev/novadrop).
+
+## License
+
+This project is licensed under the terms found in
+[`LICENSE-0BSD`](LICENSE-0BSD).

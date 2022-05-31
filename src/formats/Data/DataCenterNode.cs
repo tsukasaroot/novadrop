@@ -3,9 +3,7 @@ namespace Vezel.Novadrop.Data;
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
 public abstract class DataCenterNode
 {
-    public DataCenter Owner => _parent is DataCenter dc ? dc : Unsafe.As<DataCenterNode>(_parent).Owner;
-
-    public DataCenterNode? Parent => _parent is not DataCenter ? Unsafe.As<DataCenterNode>(_parent) : null;
+    public DataCenterNode? Parent { get; }
 
     public string Name { get; }
 
@@ -30,7 +28,7 @@ public abstract class DataCenterNode
 
     public virtual bool HasAttributes => Attributes.Count != 0;
 
-    public abstract IReadOnlyCollection<DataCenterNode> Children { get; }
+    public abstract IReadOnlyList<DataCenterNode> Children { get; }
 
     public virtual bool HasChildren => Children.Count != 0;
 
@@ -42,15 +40,13 @@ public abstract class DataCenterNode
         set => SetAttribute(name, value);
     }
 
-    readonly object _parent;
-
     string? _value;
 
     DataCenterKeys _keys;
 
-    private protected DataCenterNode(object parent, string name, string? value, DataCenterKeys keys)
+    private protected DataCenterNode(DataCenterNode? parent, string name, string? value, DataCenterKeys keys)
     {
-        _parent = parent;
+        Parent = parent;
         Name = name;
         _value = value;
         _keys = keys;
@@ -58,9 +54,24 @@ public abstract class DataCenterNode
 
     public abstract DataCenterNode CreateChild(string name);
 
+    public abstract DataCenterNode CreateChildAt(int index, string name);
+
     public abstract bool RemoveChild(DataCenterNode node);
 
+    public abstract void RemoveChildAt(int index);
+
+    public abstract void RemoveChildRange(int index, int count);
+
     public abstract void ClearChildren();
+
+    public void ReverseChildren()
+    {
+        ReverseChildren(0, Children.Count);
+    }
+
+    public abstract void ReverseChildren(int index, int count);
+
+    public abstract void SortChildren(IComparer<DataCenterNode> comparer);
 
     public abstract void AddAttribute(string name, DataCenterValue value);
 

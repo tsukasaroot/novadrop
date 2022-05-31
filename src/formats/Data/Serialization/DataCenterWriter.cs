@@ -31,38 +31,8 @@ sealed class DataCenterWriter
 
     void ProcessTree(DataCenterNode root, CancellationToken cancellationToken)
     {
-        void AddNames(DataCenterNode node)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            void AddName(string? name)
-            {
-                if (name is not (null or DataCenterConstants.RootNodeName or DataCenterConstants.ValueAttributeName))
-                    _ = _names.AddString(name);
-            }
-
-            AddName(node.Name);
-
-            var keys = node.Keys;
-
-            // There can be keys that refer to attributes that do not exist even in the official data center, so we need
-            // to explicitly add these attribute names.
-            AddName(keys.AttributeName1);
-            AddName(keys.AttributeName2);
-            AddName(keys.AttributeName3);
-            AddName(keys.AttributeName4);
-
-            if (node.HasAttributes)
-                foreach (var (key, _) in node.Attributes)
-                    AddName(key);
-
-            if (node.HasChildren)
-                foreach (var child in node.Children)
-                    AddNames(child);
-        }
-
         static DataCenterAddress AllocateRange<T>(DataCenterSegmentedRegion<T> region, int count, string description)
-            where T : unmanaged, IDataCenterItem<T>
+            where T : unmanaged, IDataCenterItem
         {
             var max = DataCenterAddress.MaxValue;
             var segIdx = 0;
@@ -143,7 +113,7 @@ sealed class DataCenterWriter
 
             if (node.HasAttributes || node.Value != null)
             {
-                var attributes = new List<KeyValuePair<int, DataCenterValue>>();
+                var attributes = new List<(int Index, DataCenterValue Value)>();
 
                 void AddAttribute(string name, DataCenterValue value)
                 {
@@ -157,7 +127,7 @@ sealed class DataCenterWriter
                 if (node.Value != null)
                     AddAttribute(DataCenterConstants.ValueAttributeName, node.Value);
 
-                attributes.Sort((x, y) => x.Key.CompareTo(y.Key));
+                attributes.Sort((x, y) => x.Index.CompareTo(y.Index));
 
                 attrCount = attributes.Count;
                 attrAddr = AllocateRange(_attributes, attrCount, "Attribute");
@@ -247,22 +217,18 @@ sealed class DataCenterWriter
 
         // The tree needs to be sorted according to the index of name strings. So we must walk the entire tree and
         // ensure that all names have been added to the table before we actually write the tree.
-        AddNames(root);
-
-        // These must always go last and must always be present.
-        _ = _names.AddString(DataCenterConstants.RootNodeName);
-        _ = _names.AddString(DataCenterConstants.ValueAttributeName);
+        DataCenterNameTree.Collect(root, s => _names.AddString(s), cancellationToken);
 
         WriteTree(root, AllocateRange(_nodes, 1, "Node"));
     }
 
     [SuppressMessage("", "CA5401")]
-    public Task WriteAsync(Stream stream, DataCenter center, CancellationToken cancellationToken)
+    public Task WriteAsync(Stream stream, DataCenterNode root, CancellationToken cancellationToken)
     {
         return Task.Run(
             async () =>
             {
-                ProcessTree(center.Root, cancellationToken);
+                ProcessTree(root, cancellationToken);
 
                 // Write the uncompressed data center into memory first so that we can write the uncompressed size
                 // before we write the zlib header. Sadness.

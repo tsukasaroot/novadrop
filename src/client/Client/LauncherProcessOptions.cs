@@ -2,32 +2,45 @@ namespace Vezel.Novadrop.Client;
 
 public sealed class LauncherProcessOptions
 {
-    public string FileName { get; private set; }
+    public string FileName { get; private set; } = null!;
 
-    public string AccountName { get; private set; }
+    public string AccountName { get; private set; } = null!;
 
-    public ReadOnlyMemory<byte> Ticket { get; private set; }
+    public string SessionTicket { get; private set; } = null!;
 
-    public Uri ServerListUri { get; private set; }
+    public Uri ServerListUri { get; private set; } = null!;
+
+    public IReadOnlyDictionary<int, LauncherServerInfo> Servers { get; private set; } =
+        new Dictionary<int, LauncherServerInfo>();
 
     public int LastServerId { get; private set; }
 
-    public LauncherProcessOptions(string fileName, string accountName, ReadOnlyMemory<byte> ticket, Uri serverListUri)
+    LauncherProcessOptions()
+    {
+    }
+
+    public LauncherProcessOptions(string fileName, string accountName, string sessionTicket, Uri serverListUri)
     {
         ArgumentNullException.ThrowIfNull(fileName);
         ArgumentNullException.ThrowIfNull(accountName);
+        ArgumentNullException.ThrowIfNull(sessionTicket);
         ArgumentNullException.ThrowIfNull(serverListUri);
 
         FileName = fileName;
         AccountName = accountName;
-        Ticket = ticket;
+        SessionTicket = sessionTicket;
         ServerListUri = serverListUri;
     }
 
     LauncherProcessOptions Clone()
     {
-        return new(FileName, AccountName, Ticket, ServerListUri)
+        return new()
         {
+            FileName = FileName,
+            AccountName = AccountName,
+            SessionTicket = SessionTicket,
+            ServerListUri = ServerListUri,
+            Servers = Servers,
             LastServerId = LastServerId,
         };
     }
@@ -54,11 +67,13 @@ public sealed class LauncherProcessOptions
         return options;
     }
 
-    public LauncherProcessOptions WithTicket(ReadOnlyMemory<byte> ticket)
+    public LauncherProcessOptions WithSessionTicket(string sessionTicket)
     {
+        ArgumentNullException.ThrowIfNull(sessionTicket);
+
         var options = Clone();
 
-        options.Ticket = ticket;
+        options.SessionTicket = sessionTicket;
 
         return options;
     }
@@ -70,6 +85,18 @@ public sealed class LauncherProcessOptions
         var options = Clone();
 
         options.ServerListUri = serverListUri;
+
+        return options;
+    }
+
+    public LauncherProcessOptions WithServers(IEnumerable<LauncherServerInfo> servers)
+    {
+        ArgumentNullException.ThrowIfNull(servers);
+        _ = servers.All(s => s != null) ? true : throw new ArgumentException(null, nameof(servers));
+
+        var options = Clone();
+
+        options.Servers = servers.ToImmutableDictionary(s => s.Id);
 
         return options;
     }

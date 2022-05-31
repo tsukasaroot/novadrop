@@ -1,12 +1,27 @@
+using Vezel.Novadrop.Commands;
+
 namespace Vezel.Novadrop;
 
 static class Program
 {
-    static async Task<int> Main()
+    static Task<int> Main(string[] args)
     {
-        // TODO: Logic.
-        await Task.Yield();
+        var app = new CommandApp();
 
-        return 0;
+        app.Configure(cfg =>
+        {
+            _ = cfg
+                .SetApplicationName("novadrop-run")
+                .PropagateExceptions();
+
+            _ = cfg
+                .AddCommand<ClientCommand>("client")
+                .WithDescription("Run the TERA client.");
+            _ = cfg
+                .AddCommand<LauncherCommand>("launcher")
+                .WithDescription("Run the TERA launcher.");
+        });
+
+        return app.RunAsync(args);
     }
 }

@@ -17,7 +17,7 @@ abstract class ImmutableDataCenterNode : DataCenterNode
 
     public override sealed bool IsImmutable => true;
 
-    public ImmutableDataCenterNode(object parent, string name, string? value, DataCenterKeys keys)
+    public ImmutableDataCenterNode(DataCenterNode? parent, string name, string? value, DataCenterKeys keys)
         : base(parent, name, value, keys)
     {
     }
@@ -27,12 +27,37 @@ abstract class ImmutableDataCenterNode : DataCenterNode
         throw new NotSupportedException();
     }
 
+    public override sealed DataCenterNode CreateChildAt(int index, string name)
+    {
+        throw new NotSupportedException();
+    }
+
     public override sealed bool RemoveChild(DataCenterNode node)
     {
         throw new NotSupportedException();
     }
 
+    public override sealed void RemoveChildAt(int index)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override sealed void RemoveChildRange(int index, int count)
+    {
+        throw new NotSupportedException();
+    }
+
     public override sealed void ClearChildren()
+    {
+        throw new NotSupportedException();
+    }
+
+    public override sealed void ReverseChildren(int index, int count)
+    {
+        throw new NotSupportedException();
+    }
+
+    public override sealed void SortChildren(IComparer<DataCenterNode> comparer)
     {
         throw new NotSupportedException();
     }

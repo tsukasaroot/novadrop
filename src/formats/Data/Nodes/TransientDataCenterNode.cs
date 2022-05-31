@@ -7,23 +7,23 @@ sealed class TransientDataCenterNode : ImmutableDataCenterNode
 
     public override bool HasAttributes { get; }
 
-    public override IReadOnlyCollection<DataCenterNode> Children => _getChildren();
+    public override IReadOnlyList<DataCenterNode> Children => _getChildren();
 
     public override bool HasChildren { get; }
 
     readonly Func<IReadOnlyDictionary<string, DataCenterValue>> _getAttributes;
 
-    readonly Func<IReadOnlyCollection<DataCenterNode>> _getChildren;
+    readonly Func<IReadOnlyList<DataCenterNode>> _getChildren;
 
     public TransientDataCenterNode(
-        object parent,
+        DataCenterNode? parent,
         string name,
         string? value,
         DataCenterKeys keys,
         bool hasAttributes,
         bool hasChildren,
         Func<IReadOnlyDictionary<string, DataCenterValue>> getAttributes,
-        Func<IReadOnlyCollection<DataCenterNode>> getChildren)
+        Func<IReadOnlyList<DataCenterNode>> getChildren)
         : base(parent, name, value, keys)
     {
         HasAttributes = hasAttributes;

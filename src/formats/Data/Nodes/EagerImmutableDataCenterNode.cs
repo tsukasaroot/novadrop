@@ -5,13 +5,13 @@ sealed class EagerImmutableDataCenterNode : ImmutableDataCenterNode
 {
     public override IReadOnlyDictionary<string, DataCenterValue> Attributes => _attributes!;
 
-    public override IReadOnlyCollection<DataCenterNode> Children => _children!;
+    public override IReadOnlyList<DataCenterNode> Children => _children!;
 
     IReadOnlyDictionary<string, DataCenterValue>? _attributes;
 
-    IReadOnlyCollection<DataCenterNode>? _children;
+    IReadOnlyList<DataCenterNode>? _children;
 
-    public EagerImmutableDataCenterNode(object parent, string name, string? value, DataCenterKeys keys)
+    public EagerImmutableDataCenterNode(DataCenterNode? parent, string name, string? value, DataCenterKeys keys)
         : base(parent, name, value, keys)
     {
     }

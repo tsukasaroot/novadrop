@@ -13,8 +13,11 @@
         <Using Include="System.ComponentModel" />
         <Using Include="System.Diagnostics" />
         <Using Include="System.Diagnostics.CodeAnalysis" />
+        <Using Include="System.Dynamic" />
         <Using Include="System.Globalization" />
         <Using Include="System.IO.Compression" />
+        <Using Include="System.Net" />
+        <Using Include="System.Net.Sockets" />
         <Using Include="System.Reflection" />
         <Using Include="System.Runtime.CompilerServices" />
         <Using Include="System.Runtime.InteropServices" />
@@ -22,6 +25,7 @@
         <Using Include="System.Text" />
         <Using Include="System.Text.Json" />
         <Using Include="System.Text.Json.Serialization" />
+        <Using Include="System.Text.RegularExpressions" />
         <Using Include="System.Xml" />
         <Using Include="System.Xml.Linq" />
         <Using Include="System.Xml.Schema" />
@@ -30,13 +34,15 @@
     <Choose>
         <When Condition="'$(IsPackable)' == 'true'">
             <PropertyGroup>
+                <ApplicationIcon>$(MSBuildThisFileDirectory)novadrop.ico</ApplicationIcon>
                 <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
                 <IsTrimmable Condition="'$(OutputType)' == 'Library'">>true</IsTrimmable>
+                <PackageIcon>novadrop.png</PackageIcon>
                 <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
             </PropertyGroup>
 
             <ItemGroup>
-                <None Include="$(MSBuildThisFileDirectory)PACKAGE.md"
+                <None Include="$(MSBuildThisFileDirectory)PACKAGE.md; $(MSBuildThisFileDirectory)novadrop.png"
                       Pack="true"
                       PackagePath=""
                       Visible="false" />

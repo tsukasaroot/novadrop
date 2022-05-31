@@ -340,7 +340,9 @@ must be sorted by their name index in ascending order.
 
 `child_address` is an address into the `node` region. `child_count` nodes should
 be read at this address. These children must be sorted first by their name
-index, then by name indexes of keys (if any), in ascending order.
+index, then by name indexes of keys (if any), in ascending order. Note that the
+sort should be stable since the order of multiple sibling nodes with the same
+name can be significant for the interpretation of the data.
 
 `padding_1` and `padding_2` should be considered undefined. They were added in
 the 64-bit data center format.
@@ -436,8 +438,8 @@ center format.
 Some nodes will have a special attribute named `__value__`. In XML terms, this
 represents the text of a node. For example, `<Foo>bar</Foo>` would be serialized
 to a node called `Foo` containing an attribute named `__value__` with the string
-value `"bar"`. It is worth noting that a node can have both text and child
-nodes, such as `Foo` in this example:
+value `bar`. It is worth noting that a node can have both text and child nodes,
+such as `Foo` in this example:
 
 ```xml
 <Foo>
