@@ -4,6 +4,8 @@ public sealed class ClientProcess : GameProcess
 {
     // Represents a TERA.exe process from the perspective of a Tl.exe-compatible process.
 
+    public event Action<int>? GameStarted;
+
     public event Action? ServerListRequested;
 
     public event Action? AccountNameRequested;
@@ -61,7 +63,7 @@ public sealed class ClientProcess : GameProcess
             return (0x4, Encoding.UTF8.GetBytes(opts.SessionTicket));
         }
 
-        (nuint, ReadOnlyMemory<byte>) HandleServerListRequest()
+        (nuint, ReadOnlyMemory<byte>) HandleServerListRequest(ReadOnlySpan<byte> payload)
         {
             ServerListRequested?.Invoke();
 
@@ -70,9 +72,10 @@ public sealed class ClientProcess : GameProcess
             var csl = new ProtoBufServerList
             {
                 LastServerId = (uint)opts.LastServerId,
+                SortCriterion = BinaryPrimitives.ReadUInt32LittleEndian(payload),
             };
 
-            foreach (var (_, srv) in opts.Servers)
+            foreach (var srv in opts.Servers.Values.OrderBy(s => s.Id))
                 csl.Servers.Add(new()
                 {
                     Id = (uint)srv.Id,
@@ -105,6 +108,13 @@ public sealed class ClientProcess : GameProcess
             return null;
         }
 
+        (nuint, ReadOnlyMemory<byte>)? HandleGameStart(ReadOnlySpan<byte> payload)
+        {
+            GameStarted?.Invoke(BinaryPrimitives.ReadInt32LittleEndian(payload));
+
+            return null;
+        }
+
         (nuint, ReadOnlyMemory<byte>)? HandleGameEvent()
         {
             GameEventOccurred?.Invoke((GameEvent)id);
@@ -130,7 +140,7 @@ public sealed class ClientProcess : GameProcess
         {
             0x1 => HandleAccountNameRequest(),
             0x3 => HandleSessionTicketRequest(),
-            0x5 => HandleServerListRequest(),
+            0x5 => HandleServerListRequest(payload),
             0x7 => HandleEnterLobbyOrWorld(payload),
             0x8 => null,
             0xa => null,
@@ -140,7 +150,8 @@ public sealed class ClientProcess : GameProcess
             0x15 => null,
             0x19 => null,
             0x1a => null,
-            0x3e8 => null,
+            0x1c => null,
+            0x3e8 => HandleGameStart(payload),
             >= 0x3e9 and <= 0x3f8 => HandleGameEvent(),
             0x3fc => HandleGameExit(payload),
             0x3fd => HandleGameCrash(payload),

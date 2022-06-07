@@ -1,25 +1,24 @@
 namespace Vezel.Novadrop.Scanners;
 
-sealed class DataCenterScanner : IScanner
+sealed class DataCenterScanner : GameScanner
 {
     static readonly ReadOnlyMemory<byte?> _pattern = new byte?[]
     {
-        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 - <disp>], <imm>
-        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 - <disp>], <imm>
-        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 - <disp>], <imm>
-        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 - <disp>], <imm>
-        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 - <disp>], <imm>
-        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 - <disp>], <imm>
-        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 - <disp>], <imm>
-        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 - <disp>], <imm>
+        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 + <disp>], <imm>
+        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 + <disp>], <imm>
+        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 + <disp>], <imm>
+        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 + <disp>], <imm>
+        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 + <disp>], <imm>
+        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 + <disp>], <imm>
+        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 + <disp>], <imm>
+        0x41, 0xc7, 0x43, null, null, null, null, null, // mov dword ptr [r11 + <disp>], <imm>
     };
 
     [SuppressMessage("", "CA1308")]
-    public async Task<bool> RunAsync(ScanContext context, CancellationToken cancellationToken)
+    public override async Task<bool> RunAsync(ScanContext context, CancellationToken cancellationToken)
     {
-        var exe = context.Process.MainModule;
-
-        var offsets = (await exe.SearchAsync(_pattern, cancellationToken)).ToArray();
+        var exe = context.Window;
+        var offsets = (await exe.SearchAsync(_pattern, 1, cancellationToken)).ToArray();
 
         if (offsets.Length != 1)
             return false;

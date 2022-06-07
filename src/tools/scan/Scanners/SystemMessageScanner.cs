@@ -1,6 +1,6 @@
 namespace Vezel.Novadrop.Scanners;
 
-sealed class SystemMessageScanner : IScanner
+sealed class SystemMessageScanner : GameScanner
 {
     static readonly ReadOnlyMemory<byte?> _pattern = new byte?[]
     {
@@ -12,12 +12,10 @@ sealed class SystemMessageScanner : IScanner
         0x48, 0x8d, 0x0d, null, null, null, null, // lea rcx, [rip + <disp>]
     };
 
-    public async Task<bool> RunAsync(ScanContext context, CancellationToken cancellationToken)
+    public override async Task<bool> RunAsync(ScanContext context, CancellationToken cancellationToken)
     {
-        var process = context.Process;
-        var exe = process.MainModule;
-
-        var offsets = (await exe.SearchAsync(_pattern, cancellationToken)).ToArray();
+        var exe = context.Window;
+        var offsets = (await exe.SearchAsync(_pattern, 1, cancellationToken)).ToArray();
 
         if (offsets.Length != 1)
             return false;

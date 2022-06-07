@@ -2,7 +2,7 @@ namespace Vezel.Novadrop.Memory;
 
 public readonly struct MemoryWindow : IEquatable<MemoryWindow>
 {
-    public NativeProcess Process { get; }
+    public MemoryAccessor Accessor { get; }
 
     public NativeAddress Address { get; }
 
@@ -10,11 +10,11 @@ public readonly struct MemoryWindow : IEquatable<MemoryWindow>
 
     public bool IsEmpty => Length == 0;
 
-    public MemoryWindow(NativeProcess process, NativeAddress address, nuint length)
+    public MemoryWindow(MemoryAccessor accessor, NativeAddress address, nuint length)
     {
-        ArgumentNullException.ThrowIfNull(process);
+        ArgumentNullException.ThrowIfNull(accessor);
 
-        Process = process;
+        Accessor = accessor;
         Address = address;
         Length = length;
     }
@@ -91,12 +91,22 @@ public readonly struct MemoryWindow : IEquatable<MemoryWindow>
     {
         _ = ContainsRange(offset, length) ? true : throw new ArgumentOutOfRangeException(nameof(offset));
 
-        return new(Process, Address + offset, length);
+        return new(Accessor, Address + offset, length);
+    }
+
+    public Task<IEnumerable<nuint>> SearchAsync(
+        ReadOnlyMemory<byte?> pattern, CancellationToken cancellationToken = default)
+    {
+        return SearchAsync(pattern, -1, cancellationToken);
     }
 
     public async Task<IEnumerable<nuint>> SearchAsync(
-        ReadOnlyMemory<byte?> pattern, CancellationToken cancellationToken = default)
+        ReadOnlyMemory<byte?> pattern, int maxDegreeOfParallelism, CancellationToken cancellationToken = default)
     {
+        _ = !pattern.IsEmpty ? true : throw new ArgumentException(null, nameof(pattern));
+        _ = maxDegreeOfParallelism is > 0 or -1 ?
+            true : throw new ArgumentOutOfRangeException(nameof(maxDegreeOfParallelism));
+
         var window = this;
         var length = pattern.Length;
 
@@ -108,37 +118,46 @@ public readonly struct MemoryWindow : IEquatable<MemoryWindow>
 
         var offsets = new List<nuint>();
 
-        await Parallel.ForEachAsync(EnumerateOffsets(), cancellationToken, (i, ct) =>
-        {
-            ct.ThrowIfCancellationRequested();
-
-            var offset = (nuint)i;
-            var candidateSpan = length <= 256 ? stackalloc byte[length] : new byte[length];
-
-            if (!window.TryRead(offset, candidateSpan))
-                return default;
-
-            var patternSpan = pattern.Span;
-            var match = true;
-
-            for (var j = 0; j < length; j++)
-            {
-                var b = Unsafe.Add(ref MemoryMarshal.GetReference(patternSpan), j);
-
-                if (b != null && Unsafe.Add(ref MemoryMarshal.GetReference(candidateSpan), j) != b)
+        await Parallel
+            .ForEachAsync(
+                EnumerateOffsets(),
+                new ParallelOptions
                 {
-                    match = false;
+                    MaxDegreeOfParallelism = maxDegreeOfParallelism,
+                    CancellationToken = cancellationToken,
+                },
+                (i, ct) =>
+                {
+                    ct.ThrowIfCancellationRequested();
 
-                    break;
-                }
-            }
+                    var offset = (nuint)i;
+                    var candidateSpan = length <= 256 ? stackalloc byte[length] : new byte[length];
 
-            if (match)
-                lock (offsets)
-                    offsets.Add(offset);
+                    if (!window.TryRead(offset, candidateSpan))
+                        return default;
 
-            return default;
-        }).ConfigureAwait(false);
+                    var patternSpan = pattern.Span;
+                    var match = true;
+
+                    for (var j = 0; j < length; j++)
+                    {
+                        var b = Unsafe.Add(ref MemoryMarshal.GetReference(patternSpan), j);
+
+                        if (b != null && Unsafe.Add(ref MemoryMarshal.GetReference(candidateSpan), j) != b)
+                        {
+                            match = false;
+
+                            break;
+                        }
+                    }
+
+                    if (match)
+                        lock (offsets)
+                            offsets.Add(offset);
+
+                    return default;
+                })
+            .ConfigureAwait(false);
 
         return offsets;
     }
@@ -148,7 +167,7 @@ public readonly struct MemoryWindow : IEquatable<MemoryWindow>
         if (!ContainsRange(offset, (nuint)buffer.Length))
             return false;
 
-        Process.Read(ToAddress(offset), buffer);
+        Accessor.Read(ToAddress(offset), buffer);
 
         return true;
     }
@@ -178,7 +197,7 @@ public readonly struct MemoryWindow : IEquatable<MemoryWindow>
         if (!ContainsRange(offset, (nuint)buffer.Length))
             return false;
 
-        Process.Write(ToAddress(offset), buffer);
+        Accessor.Write(ToAddress(offset), buffer);
 
         return true;
     }
@@ -204,7 +223,7 @@ public readonly struct MemoryWindow : IEquatable<MemoryWindow>
 
     public bool Equals(MemoryWindow other)
     {
-        return Process == other.Process && Address == other.Address && Length == other.Length;
+        return Accessor == other.Accessor && Address == other.Address && Length == other.Length;
     }
 
     public override bool Equals([NotNullWhen(true)] object? obj)
@@ -214,11 +233,11 @@ public readonly struct MemoryWindow : IEquatable<MemoryWindow>
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(Process, Address, Length);
+        return HashCode.Combine(Accessor, Address, Length);
     }
 
     public override string ToString()
     {
-        return $"{{Process: {Process}, Address: 0x{Address:x}, Length: {Length}}}";
+        return $"{{Address: 0x{Address:x}, Length: {Length}}}";
     }
 }

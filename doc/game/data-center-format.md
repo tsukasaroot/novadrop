@@ -11,7 +11,7 @@ TERA.
 * Characters (i.e. `char16_t`) are UTF-16 and little endian.
 * Fields are laid out in the declared order with no implied padding anywhere.
 
-Please note that the format uses both zero-based and one-based array indexes in
+Note that the format uses both zero-based and one-based array indexes in
 various, seemingly random places.
 
 ## Encryption
@@ -71,26 +71,27 @@ After decompression, a data center file starts with this header:
 ```cpp
 struct DataCenterHeader
 {
-    uint32_t file_version;
+    uint32_t version;
     double timestamp;
-    uint32_t client_version;
-    int32_t unknown1;
-    int32_t unknown2;
-    int32_t unknown3;
-    int32_t unknown4;
+    uint32_t revision;
+    int32_t unknown_1;
+    int32_t unknown_2;
+    int32_t unknown_3;
+    int32_t unknown_4;
 };
 ```
 
-`file_version` is currently `6`.
+`version` is currently `6`.
 
 `timestamp` is a Unix timestamp indicating when the file was produced.
 
-`unknown1`, `unknown2`, `unknown3`, and `unknown4` are all always `0`. They are
-actually part of a tree structure describing the
+`unknown_1`, `unknown_2`, `unknown_3`, and `unknown_4` are all always `0`. They
+are actually part of a tree structure describing the
 [XSD](https://www.w3.org/TR/xmlschema-1) schema of the data tree, but official
 data centers never include this information.
 
-`client_version` is usually (but not always) the value sent by the client in the
+`revision` indicates the version of the data tree contained within the file. It
+is sometimes (but not always) equal to the value sent by the client in the
 `C_CHECK_VERSION` packet.
 
 ### File Footer
@@ -192,7 +193,7 @@ struct DataCenterString
 `data_center_string_hash(value)` where `value` is the string value. In a typical
 data center file, there is only a very tiny amount of hash collisions.
 
-`length` is the length of the string in terms of characters, including the `NUL`
+`length` is the length of the string in terms of characters, including the NUL
 character.
 
 `index` is a **one-based** index into the string table's `addresses` region. The
@@ -201,8 +202,8 @@ address at this index must match the `address` field exactly.
 `address` is an address into the string table's `data` region. This address
 points to the actual string data. The string read from this address must have
 the same length as the `length` field. Notably, if the string data straddles the
-end of its segment, the `NUL` character may be omitted. Readers should therefore
-not rely exclusively on the presence of a `NUL` character, but also check the
+end of its segment, the NUL character may be omitted. Readers should therefore
+not rely exclusively on the presence of a NUL character, but also check the
 segment bounds.
 
 A string entry must be placed in the correct `table` segment based on its `hash`
