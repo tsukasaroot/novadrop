@@ -35,12 +35,10 @@ jobs:
               with:
                   names: |
                       novadrop-dc
-                      novadrop-gpk
-                      novadrop-rsc
+                      novadrop-rc
                       novadrop-run
                       novadrop-scan
                       Vezel.Novadrop.Client
                       Vezel.Novadrop.Common
                       Vezel.Novadrop.Formats
-                      Vezel.Novadrop.Net
                   keep: 25

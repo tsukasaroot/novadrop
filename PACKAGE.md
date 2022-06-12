@@ -16,9 +16,7 @@ This project offers the following packages:
 
 * [novadrop-dc](https://www.nuget.org/packages/novadrop-dc): Provides the .NET
   global tool for manipulating TERA's data center files.
-* [novadrop-gpk](https://www.nuget.org/packages/novadrop-gpk): Provides the .NET
-  global tool for manipulating TERA's GPK archive files.
-* [novadrop-rsc](https://www.nuget.org/packages/novadrop-rsc): Provides the .NET
+* [novadrop-rc](https://www.nuget.org/packages/novadrop-rc): Provides the .NET
   global tool for manipulating TERA's resource container files.
 * [novadrop-run](https://www.nuget.org/packages/novadrop-run): Provides
   the .NET global tool for running the TERA launcher or client from the command
@@ -31,8 +29,6 @@ This project offers the following packages:
   Provides common functionality used by all Novadrop packages.
 * [Vezel.Novadrop.Formats](https://www.nuget.org/packages/Vezel.Novadrop.Data):
   Provides support for TERA's various file formats.
-* [Vezel.Novadrop.Net](https://www.nuget.org/packages/Vezel.Novadrop.Net):
-  Provides support for TERA's network protocol.
 
 For more information, please visit the
 [project home page](https://docs.vezel.dev/novadrop).

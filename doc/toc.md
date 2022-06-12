@@ -15,12 +15,10 @@
 * [Vezel.Novadrop.Client](libraries/client.md)
 * [Vezel.Novadrop.Common](libraries/common.md)
 * [Vezel.Novadrop.Formats](libraries/formats.md)
-* [Vezel.Novadrop.Net](libraries/net.md)
 
 ## Tools
 
 * [novadrop-dc](tools/dc.md)
-* [novadrop-gpk](tools/gpk.md)
-* [novadrop-rsc](tools/rsc.md)
+* [novadrop-rc](tools/rc.md)
 * [novadrop-run](tools/run.md)
 * [novadrop-scan](tools/scan.md)
