@@ -1,7 +1,7 @@
 namespace Vezel.Novadrop.Commands;
 
 [SuppressMessage("", "CA1812")]
-sealed class UnpackCommand : CancellableAsyncCommand<UnpackCommand.UnpackCommandSettings>
+internal sealed class UnpackCommand : CancellableAsyncCommand<UnpackCommand.UnpackCommandSettings>
 {
     public sealed class UnpackCommandSettings : CommandSettings
     {
@@ -45,7 +45,7 @@ sealed class UnpackCommand : CancellableAsyncCommand<UnpackCommand.UnpackCommand
     protected override async Task<int> ExecuteAsync(
         dynamic expando, UnpackCommandSettings settings, ProgressContext progress, CancellationToken cancellationToken)
     {
-        Log.WriteLine($"Unpacking [cyan]{settings.Input}[/] to [cyan]{settings.Output}[/]...");
+        Log.MarkupLineInterpolated($"Unpacking [cyan]{settings.Input}[/] to [cyan]{settings.Output}[/]...");
 
         var root = await progress.RunTaskAsync(
             "Load data center",
@@ -74,11 +74,16 @@ sealed class UnpackCommand : CancellableAsyncCommand<UnpackCommand.UnpackCommand
             {
                 output.Create();
 
+                [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+                [SuppressMessage("", "CS0436")]
                 async ValueTask WriteSchemaAsync(DirectoryInfo directory, string name)
                 {
                     var xsdName = $"{name}.xsd";
 
-                    await using var inXsd = Assembly.GetExecutingAssembly().GetManifestResourceStream(xsdName);
+                    // TODO: https://github.com/dotnet/Nerdbank.GitVersioning/issues/555
+#pragma warning disable CS0436
+                    await using var inXsd = typeof(ThisAssembly).Assembly.GetManifestResourceStream(xsdName);
+#pragma warning restore CS0436
 
                     // Is this not a data sheet we recognize?
                     if (inXsd == null)
@@ -121,18 +126,19 @@ sealed class UnpackCommand : CancellableAsyncCommand<UnpackCommand.UnpackCommand
 
                 return Parallel.ForEachAsync(
                     sheets
-                        .GroupBy(n => n.Name, (name, elems) => elems.Select((n, i) => (Node: n, Index: i)))
+                        .GroupBy(n => n.Name, (name, elems) => elems.Select((node, index) => (node, index)))
                         .SelectMany(elems => elems),
                     cancellationToken,
                     async (item, cancellationToken) =>
                     {
-                        var node = item.Node;
+                        var node = item.node;
 
                         await using var textWriter = new StreamWriter(Path.Combine(
-                            output.CreateSubdirectory(node.Name).FullName, $"{node.Name}-{item.Index:d5}.xml"));
+                            output.CreateSubdirectory(node.Name).FullName, $"{node.Name}-{item.index:d5}.xml"));
 
                         await using (var xmlWriter = XmlWriter.Create(textWriter, xmlSettings))
                         {
+                            [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
                             async ValueTask WriteSheetAsync(DataCenterNode current, bool top)
                             {
                                 var uri = $"https://vezel.dev/novadrop/dc/{node.Name}";
@@ -181,7 +187,7 @@ sealed class UnpackCommand : CancellableAsyncCommand<UnpackCommand.UnpackCommand
         dynamic expando, UnpackCommandSettings settings, CancellationToken cancellationToken)
     {
         foreach (var name in (List<string>)expando.Missing)
-            Log.WriteLine($"[yellow]Data sheet [cyan]{name}[/] does not have a known schema.[/]");
+            Log.MarkupLineInterpolated($"[yellow]Data sheet [cyan]{name}[/] does not have a known schema.[/]");
 
         return Task.CompletedTask;
     }

@@ -1,7 +1,7 @@
 namespace Vezel.Novadrop.Commands;
 
 [SuppressMessage("", "CA1812")]
-sealed class ClientCommand : CancellableAsyncCommand<ClientCommand.ClientCommandSettings>
+internal sealed class ClientCommand : CancellableAsyncCommand<ClientCommand.ClientCommandSettings>
 {
     public sealed class ClientCommandSettings : CommandSettings
     {
@@ -54,20 +54,8 @@ sealed class ClientCommand : CancellableAsyncCommand<ClientCommand.ClientCommand
         dynamic expando, ClientCommandSettings settings, ProgressContext progress, CancellationToken cancellationToken)
     {
         var srvName = $"{settings.ServerHost}:{settings.ServerPort}";
-        var srv = new ClientServerInfo(
-            42,
-            string.Empty,
-            srvName,
-            srvName,
-            string.Empty,
-            string.Empty,
-            true,
-            string.Empty,
-            settings.ServerHost,
-            null,
-            settings.ServerPort);
 
-        Log.WriteLine($"Running client and connecting to [cyan]{srvName}[/]...");
+        Log.MarkupLineInterpolated($"Running client and connecting to [cyan]{srvName}[/]...");
 
         return progress.RunTaskAsync(
             "Connecting to arbiter server",
@@ -75,9 +63,21 @@ sealed class ClientCommand : CancellableAsyncCommand<ClientCommand.ClientCommand
             increment =>
             {
                 var process = new ClientProcess(
-                    new ClientProcessOptions(
-                        settings.Executable, settings.AccountName, settings.SessionTicket, new[] { srv })
+                    new ClientProcessOptions(settings.Executable, settings.AccountName, settings.SessionTicket)
                         .WithLanguage(settings.Language)
+                        .AddServer(
+                            new(
+                                42,
+                                string.Empty,
+                                srvName,
+                                srvName,
+                                string.Empty,
+                                string.Empty,
+                                true,
+                                string.Empty,
+                                settings.ServerHost,
+                                null,
+                                settings.ServerPort))
                         .WithLastServerId(42));
 
                 var patches = new List<(GamePatch, Task)>();
@@ -128,10 +128,7 @@ sealed class ClientCommand : CancellableAsyncCommand<ClientCommand.ClientCommand
 
                 process.GameEventOccurred += e =>
                 {
-                    if (e is GameEvent.EnteredIntroCinematic or
-                        GameEvent.EnteredServerList or
-                        GameEvent.EnteringLobby or
-                        GameEvent.EnteredLobby)
+                    if (e is >= GameEvent.EnteredIntroCinematic and <= GameEvent.EnteredLobby)
                         increment();
                 };
 

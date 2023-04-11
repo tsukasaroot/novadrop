@@ -3,13 +3,13 @@ using Vezel.Novadrop.Data.Serialization.Items;
 
 namespace Vezel.Novadrop.Data.Serialization.Readers;
 
-sealed class EagerImmutableDataCenterReader : DataCenterReader
+internal sealed class EagerImmutableDataCenterReader : DataCenterReader
 {
-    static readonly OrderedDictionary<string, DataCenterValue> _emptyAttributes = new();
+    private static readonly OrderedDictionary<string, DataCenterValue> _emptyAttributes = new();
 
-    static readonly List<DataCenterNode> _emptyChildren = new();
+    private static readonly List<DataCenterNode> _emptyChildren = new();
 
-    readonly Dictionary<DataCenterAddress, EagerImmutableDataCenterNode> _cache = new();
+    private readonly Dictionary<DataCenterAddress, EagerImmutableDataCenterNode> _cache = new();
 
     public EagerImmutableDataCenterReader(DataCenterLoadOptions options)
         : base(options)
@@ -34,20 +34,21 @@ sealed class EagerImmutableDataCenterReader : DataCenterReader
 
         if (attrCount != 0)
         {
-            attributes = new OrderedDictionary<string, DataCenterValue>(attrCount);
+            attributes = new(attrCount);
 
-            ReadAttributes(raw, attributes, static (attributes, name, value) =>
-            {
-                if (!attributes.TryAdd(name, value))
-                    throw new InvalidDataException($"Attribute named '{name}' was already recorded earlier.");
-            });
+            ReadAttributes(
+                raw,
+                attributes,
+                static (attributes, name, value) =>
+                    Check.Data(
+                        attributes.TryAdd(name, value), $"Attribute named '{name}' was already recorded earlier."));
         }
 
         var children = _emptyChildren;
 
         if (raw.ChildCount != 0)
         {
-            children = new List<DataCenterNode>(raw.ChildCount);
+            children = new(raw.ChildCount);
 
             ReadChildren(raw, node, children, static (children, node) => children.Add(node), cancellationToken);
         }

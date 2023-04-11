@@ -1,3 +1,4 @@
+using Windows.Win32.Foundation;
 using static Windows.Win32.WindowsPInvoke;
 
 namespace Vezel.Novadrop.Memory.Code;
@@ -10,9 +11,9 @@ public sealed class DynamicCode : IDisposable
 
     public MemoryWindow CodeWindow { get; }
 
-    int _disposed;
+    private int _disposed;
 
-    DynamicCode(NativeProcess process, MemoryWindow fullWindow, MemoryWindow codeWindow)
+    private DynamicCode(NativeProcess process, MemoryWindow fullWindow, MemoryWindow codeWindow)
     {
         Process = process;
         FullWindow = fullWindow;
@@ -31,7 +32,7 @@ public sealed class DynamicCode : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    void Free()
+    private void Free()
     {
         if (Interlocked.Exchange(ref _disposed, 1) == 0)
             Process.Free(FullWindow.Address);
@@ -39,8 +40,8 @@ public sealed class DynamicCode : IDisposable
 
     public static unsafe DynamicCode Create(NativeProcess process, Action<Assembler> assembler)
     {
-        ArgumentNullException.ThrowIfNull(process);
-        ArgumentNullException.ThrowIfNull(assembler);
+        Check.Null(process);
+        Check.Null(assembler);
 
         var asm = new Assembler(sizeof(nuint) * 8);
 
@@ -83,7 +84,7 @@ public sealed class DynamicCode : IDisposable
 
     public unsafe uint Call(nuint parameter)
     {
-        _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+        Check.Usable(_disposed == 0, this);
 
         using var handle = CreateRemoteThread(
             Process.Handle,
@@ -95,7 +96,7 @@ public sealed class DynamicCode : IDisposable
             null);
 
         return !handle.IsInvalid
-            ? WaitForSingleObject(handle, INFINITE) == WAIT_OBJECT_0
+            ? WaitForSingleObject(handle, INFINITE) == (uint)WIN32_ERROR.WAIT_OBJECT_0
                 ? GetExitCodeThread(handle, out var result)
                     ? result
                     : throw new Win32Exception()

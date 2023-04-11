@@ -3,17 +3,17 @@ using Vezel.Novadrop.Data.Serialization.Regions;
 
 namespace Vezel.Novadrop.Data.Serialization.Tables;
 
-sealed class DataCenterStringTableWriter
+internal sealed class DataCenterStringTableWriter
 {
-    readonly DataCenterSegmentedRegion<DataCenterRawChar> _data = new();
+    private readonly DataCenterSegmentedRegion<DataCenterRawChar> _data = new();
 
-    readonly DataCenterSegmentedSimpleRegion<DataCenterRawString> _strings;
+    private readonly DataCenterSegmentedSimpleRegion<DataCenterRawString> _strings;
 
-    readonly DataCenterSimpleRegion<DataCenterRawAddress> _addresses = new(true);
+    private readonly DataCenterSimpleRegion<DataCenterRawAddress> _addresses = new(true);
 
-    readonly Dictionary<string, DataCenterRawString> _cache = new(ushort.MaxValue);
+    private readonly Dictionary<string, DataCenterRawString> _cache = new(ushort.MaxValue);
 
-    readonly bool _limit;
+    private readonly bool _limit;
 
     public DataCenterStringTableWriter(int count, bool limit)
     {
@@ -21,6 +21,7 @@ sealed class DataCenterStringTableWriter
         _limit = limit;
     }
 
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
     public async ValueTask WriteAsync(StreamBinaryWriter writer, CancellationToken cancellationToken)
     {
         await _data.WriteAsync(writer, cancellationToken).ConfigureAwait(false);
@@ -37,9 +38,9 @@ sealed class DataCenterStringTableWriter
         if (!_cache.TryGetValue(value, out var raw))
         {
             // The name table is accessed with one-based 16-bit indexes rather than full addresses.
-            if (_limit && _addresses.Elements.Count == ushort.MaxValue)
-                throw new InvalidOperationException(
-                    $"String address table is full ({_addresses.Elements.Count} elements).");
+            Check.Operation(
+                !_limit || _addresses.Elements.Count != ushort.MaxValue,
+                $"String address table is full ({_addresses.Elements.Count} elements).");
 
             var max = DataCenterAddress.MaxValue;
             var segIdx = 0;
@@ -64,10 +65,9 @@ sealed class DataCenterStringTableWriter
             {
                 segIdx = _data.Segments.Count;
 
-                if (segIdx > max.SegmentIndex)
-                    throw new InvalidOperationException($"String table is full ({segIdx} segments).");
+                Check.Operation(segIdx <= max.SegmentIndex, $"String table is full ({segIdx} segments).");
 
-                segment = new DataCenterRegion<DataCenterRawChar>();
+                segment = new();
 
                 _data.Segments.Add(segment);
             }
@@ -90,7 +90,7 @@ sealed class DataCenterStringTableWriter
 
             var hash = DataCenterHash.ComputeStringHash(value);
 
-            raw = new DataCenterRawString
+            raw = new()
             {
                 Hash = hash,
                 Length = value.Length + 1,
@@ -98,7 +98,7 @@ sealed class DataCenterStringTableWriter
                 Address = addr,
             };
 
-            _strings.Segments[(int)((hash ^ hash >> 16) % (uint)_strings.Segments.Length)].Elements.Add(raw);
+            _strings.Segments[(int)((hash ^ hash >> 16) % (uint)_strings.Segments.Count)].Elements.Add(raw);
 
             _cache.Add(value, raw);
         }

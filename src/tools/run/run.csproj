@@ -1,21 +1,21 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <AssemblyName>novadrop-run</AssemblyName>
-        <PackAsToolShimRuntimeIdentifiers>win-x64</PackAsToolShimRuntimeIdentifiers>
         <PackageDescription>$(PackageDescription)
 
 This package provides the .NET global tool for running the TERA launcher or
 client from the command line.</PackageDescription>
         <PackageId>novadrop-run</PackageId>
+        <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     </PropertyGroup>
-
-    <ItemGroup>
-        <Using Include="Vezel.Novadrop.Client" />
-        <Using Include="Vezel.Novadrop.Memory" />
-        <Using Include="Vezel.Novadrop.Patches" />
-    </ItemGroup>
 
     <ItemGroup>
         <ProjectReference Include="../../client/client.csproj" />
     </ItemGroup>
+
+    <!--
+    This import is required here since we are not consuming the library as a
+    PackageReference item.
+    -->
+    <Import Project="../../client/buildTransitive/Vezel.Novadrop.Client.targets" />
 </Project>

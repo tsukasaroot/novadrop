@@ -3,19 +3,20 @@ using Vezel.Novadrop.Data.Serialization.Regions;
 
 namespace Vezel.Novadrop.Data.Serialization.Tables;
 
-sealed class DataCenterKeysTableWriter
+internal sealed class DataCenterKeysTableWriter
 {
-    readonly DataCenterSimpleRegion<DataCenterRawKeys> _keys = new(false);
+    private readonly DataCenterSimpleRegion<DataCenterRawKeys> _keys = new(false);
 
-    readonly Dictionary<(string?, string?, string?, string?), int> _cache = new(ushort.MaxValue);
+    private readonly Dictionary<(string?, string?, string?, string?), int> _cache = new(ushort.MaxValue);
 
-    readonly DataCenterStringTableWriter _names;
+    private readonly DataCenterStringTableWriter _names;
 
     public DataCenterKeysTableWriter(DataCenterStringTableWriter names)
     {
         _names = names;
     }
 
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
     public async ValueTask WriteAsync(StreamBinaryWriter writer, CancellationToken cancellationToken)
     {
         await _keys.WriteAsync(writer, cancellationToken).ConfigureAwait(false);
@@ -27,16 +28,16 @@ sealed class DataCenterKeysTableWriter
 
         if (!_cache.TryGetValue(tup, out var index))
         {
-            if (_keys.Elements.Count == DataCenterConstants.KeysTableSize)
-                throw new InvalidOperationException(
-                    $"Keys table is full ({DataCenterConstants.KeysTableSize} elements).");
+            Check.Operation(
+                _keys.Elements.Count != DataCenterConstants.KeysTableSize,
+                $"Keys table is full ({DataCenterConstants.KeysTableSize} elements).");
 
             ushort GetIndex(string? value)
             {
                 return (ushort)(value != null ? _names.AddString(value).Index : 0);
             }
 
-            _keys.Elements.Add(new DataCenterRawKeys
+            _keys.Elements.Add(new()
             {
                 NameIndex1 = GetIndex(attributeName1),
                 NameIndex2 = GetIndex(attributeName2),

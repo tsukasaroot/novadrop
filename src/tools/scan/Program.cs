@@ -1,18 +1,12 @@
 using Vezel.Novadrop.Commands;
 
-namespace Vezel.Novadrop;
+AnsiConsole.Profile.Capabilities.Ansi = !Console.IsOutputRedirected && !Console.IsErrorRedirected;
 
-static class Program
-{
-    static Task<int> Main(string[] args)
-    {
-        var app = new CommandApp<ScanCommand>();
+var app = new CommandApp<ScanCommand>();
 
-        app.Configure(cfg =>
-            cfg
-                .SetApplicationName("novadrop-scan")
-                .PropagateExceptions());
+app.Configure(cfg =>
+    cfg
+        .SetApplicationName("novadrop-scan")
+        .PropagateExceptions());
 
-        return app.RunAsync(args);
-    }
-}
+return await app.RunAsync(args);

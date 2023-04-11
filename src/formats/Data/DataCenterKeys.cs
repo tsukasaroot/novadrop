@@ -1,7 +1,8 @@
 namespace Vezel.Novadrop.Data;
 
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public sealed class DataCenterKeys : IEquatable<DataCenterKeys>
+public sealed class DataCenterKeys :
+    IEquatable<DataCenterKeys>, IEqualityOperators<DataCenterKeys, DataCenterKeys, bool>
 {
     public static DataCenterKeys None { get; } = new();
 
@@ -40,15 +41,10 @@ public sealed class DataCenterKeys : IEquatable<DataCenterKeys>
         string? attributeName3 = null,
         string? attributeName4 = null)
     {
-        static void CheckName(string? name, [CallerArgumentExpression("name")] string? paramName = null)
-        {
-            _ = name != DataCenterConstants.ValueAttributeName ? true : throw new ArgumentException(null, paramName);
-        }
-
-        CheckName(attributeName1);
-        CheckName(attributeName2);
-        CheckName(attributeName3);
-        CheckName(attributeName4);
+        Check.Argument(attributeName1 != DataCenterConstants.ValueAttributeName, value: attributeName1);
+        Check.Argument(attributeName2 != DataCenterConstants.ValueAttributeName, value: attributeName2);
+        Check.Argument(attributeName3 != DataCenterConstants.ValueAttributeName, value: attributeName3);
+        Check.Argument(attributeName4 != DataCenterConstants.ValueAttributeName, value: attributeName4);
 
         AttributeName1 = attributeName1;
         AttributeName2 = attributeName2;
@@ -56,15 +52,10 @@ public sealed class DataCenterKeys : IEquatable<DataCenterKeys>
         AttributeName4 = attributeName4;
     }
 
-    public static bool operator ==(DataCenterKeys? left, DataCenterKeys? right)
-    {
-        return EqualityComparer<DataCenterKeys>.Default.Equals(left, right);
-    }
+    public static bool operator ==(DataCenterKeys? left, DataCenterKeys? right) =>
+        EqualityComparer<DataCenterKeys>.Default.Equals(left, right);
 
-    public static bool operator !=(DataCenterKeys? left, DataCenterKeys? right)
-    {
-        return !(left == right);
-    }
+    public static bool operator !=(DataCenterKeys? left, DataCenterKeys? right) => !(left == right);
 
     public DataCenterKeys WithAttributeName1(string attributeName1)
     {
@@ -96,7 +87,7 @@ public sealed class DataCenterKeys : IEquatable<DataCenterKeys>
 
     public override bool Equals(object? obj)
     {
-        return obj is DataCenterKeys k && Equals(k);
+        return Equals(obj as DataCenterKeys);
     }
 
     public override int GetHashCode()

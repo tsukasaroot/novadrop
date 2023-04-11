@@ -1,32 +1,37 @@
 <Project>
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <GlobalPackageReference Include="DotNet.ReproducibleBuilds"
+                                Version="1.1.1" />
+        <GlobalPackageReference Include="Microsoft.SourceLink.GitHub"
+                                Version="1.1.1" />
+        <GlobalPackageReference Include="Microsoft.VisualStudio.Threading.Analyzers"
+                                Version="17.5.22" />
+        <GlobalPackageReference Include="Nerdbank.GitVersioning"
+                                Version="3.5.119" />
+        <GlobalPackageReference Include="StyleCop.Analyzers"
+                                Version="1.2.0-beta.435" />
+    </ItemGroup>
+
     <ItemGroup>
         <PackageVersion Include="Iced"
-                        Version="1.17.0" />
-        <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Scripting"
-                        Version="4.1.0" />
+                        Version="1.18.0" />
         <PackageVersion Include="Microsoft.Experimental.Collections"
                         Version="1.0.6-e190117-3" />
-        <PackageVersion Include="Microsoft.SourceLink.GitHub"
-                        Version="1.1.1" />
-        <PackageVersion Include="Microsoft.VisualStudio.Threading.Analyzers"
-                        Version="17.1.46" />
         <PackageVersion Include="Microsoft.Windows.CsWin32"
-                        Version="0.1.647-beta" />
+                        Version="0.2.188-beta" />
         <PackageVersion Include="Microsoft.Windows.SDK.Win32Docs"
-                        Version="0.1.7-alpha" />
+                        Version="0.1.12-alpha" />
         <PackageVersion Include="Microsoft.Windows.SDK.Win32Metadata"
-                        Version="22.0.14-preview" />
-        <PackageVersion Include="Nerdbank.GitVersioning"
-                        Version="3.5.86-alpha" />
+                        Version="41.0.25-preview" />
         <PackageVersion Include="protobuf-net"
-                        Version="3.1.4" />
+                        Version="3.2.12" />
         <PackageVersion Include="protobuf-net.BuildTools"
-                        Version="3.0.115" />
-        <PackageVersion Include="ReadLine"
-                        Version="2.0.1" />
+                        Version="3.2.12" />
         <PackageVersion Include="Spectre.Console.Cli"
-                        Version="0.44.1-preview.0.17" />
-        <PackageVersion Include="StyleCop.Analyzers"
-                        Version="1.2.0-beta.406" />
+                        Version="0.46.0" />
     </ItemGroup>
 </Project>

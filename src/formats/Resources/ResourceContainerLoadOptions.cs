@@ -6,7 +6,7 @@ public sealed class ResourceContainerLoadOptions
 
     public bool Strict { get; private set; }
 
-    ResourceContainerLoadOptions Clone()
+    private ResourceContainerLoadOptions Clone()
     {
         return new()
         {
@@ -15,9 +15,9 @@ public sealed class ResourceContainerLoadOptions
         };
     }
 
-    public ResourceContainerLoadOptions WithKey(ReadOnlySpan<byte> key)
+    public ResourceContainerLoadOptions WithKey(scoped ReadOnlySpan<byte> key)
     {
-        _ = key.Length == ResourceContainer.LatestKey.Length ? true : throw new ArgumentException(null, nameof(key));
+        Check.Argument(key.Length == ResourceContainer.LatestKey.Length, nameof(key));
 
         var options = Clone();
 

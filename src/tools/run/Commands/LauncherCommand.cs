@@ -1,7 +1,7 @@
 namespace Vezel.Novadrop.Commands;
 
 [SuppressMessage("", "CA1812")]
-sealed class LauncherCommand : CancellableAsyncCommand<LauncherCommand.LauncherCommandSettings>
+internal sealed class LauncherCommand : CancellableAsyncCommand<LauncherCommand.LauncherCommandSettings>
 {
     public sealed class LauncherCommandSettings : CommandSettings
     {
@@ -40,7 +40,7 @@ sealed class LauncherCommand : CancellableAsyncCommand<LauncherCommand.LauncherC
         ProgressContext progress,
         CancellationToken cancellationToken)
     {
-        Log.WriteLine($"Running launcher and connecting to [cyan]{settings.ServerListUri}[/]...");
+        Log.MarkupLineInterpolated($"Running launcher and connecting to [cyan]{settings.ServerListUri}[/]...");
 
         return progress.RunTaskAsync(
             "Connecting to arbiter server",
@@ -61,10 +61,7 @@ sealed class LauncherCommand : CancellableAsyncCommand<LauncherCommand.LauncherC
 
                 process.GameEventOccurred += e =>
                 {
-                    if (e is GameEvent.EnteredIntroCinematic or
-                        GameEvent.EnteredServerList or
-                        GameEvent.EnteringLobby or
-                        GameEvent.EnteredLobby)
+                    if (e is >= GameEvent.EnteredIntroCinematic and <= GameEvent.EnteredLobby)
                         increment();
                 };
 

@@ -2,29 +2,26 @@ using Vezel.Novadrop.Data.Serialization.Items;
 
 namespace Vezel.Novadrop.Data.Serialization.Regions;
 
-sealed class DataCenterSimpleRegion<T>
+internal sealed class DataCenterRegion<T>
     where T : unmanaged, IDataCenterItem
 {
-    readonly bool _offByOne;
+    public List<T> Elements { get; } = new(ushort.MaxValue);
 
-    public List<T> Elements { get; } = new List<T>(ushort.MaxValue);
-
-    public DataCenterSimpleRegion(bool offByOne)
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
+    public async ValueTask ReadAsync(bool strict, StreamBinaryReader reader, CancellationToken cancellationToken)
     {
-        _offByOne = offByOne;
-    }
-
-    public async ValueTask ReadAsync(StreamBinaryReader reader, CancellationToken cancellationToken)
-    {
+        var capacity = await reader.ReadInt32Async(cancellationToken).ConfigureAwait(false);
         var count = await reader.ReadInt32Async(cancellationToken).ConfigureAwait(false);
 
-        if (_offByOne)
-            count--;
+        Check.Data(count >= 0, $"Region length {count} is negative.");
 
-        if (count < 0)
-            throw new InvalidDataException($"Region length {count} is negative.");
+        if (strict)
+        {
+            Check.Data(capacity >= 0, $"Region capacity {capacity} is negative.");
+            Check.Data(count <= capacity, $"Region length {count} is greater than region capacity {capacity}.");
+        }
 
-        var length = Unsafe.SizeOf<T>() * count;
+        var length = Unsafe.SizeOf<T>() * capacity;
         var bytes = ArrayPool<byte>.Shared.Rent(length);
 
         try
@@ -52,11 +49,13 @@ sealed class DataCenterSimpleRegion<T>
         }
     }
 
+    [AsyncMethodBuilder(typeof(PoolingAsyncValueTaskMethodBuilder))]
     public async ValueTask WriteAsync(StreamBinaryWriter writer, CancellationToken cancellationToken)
     {
         var count = Elements.Count;
 
-        await writer.WriteInt32Async(count + (_offByOne ? 1 : 0), cancellationToken).ConfigureAwait(false);
+        for (var i = 0; i < 2; i++)
+            await writer.WriteInt32Async(count, cancellationToken).ConfigureAwait(false);
 
         var length = Unsafe.SizeOf<T>() * count;
         var bytes = ArrayPool<byte>.Shared.Rent(length);
@@ -90,9 +89,9 @@ sealed class DataCenterSimpleRegion<T>
 
     public T GetElement(int index)
     {
-        return index < Elements.Count
-            ? Elements[index]
-            : throw new InvalidDataException($"Region element index {index} is out of bounds (0..{Elements.Count}).");
+        Check.Data(index < Elements.Count, $"Region element index {index} is out of bounds (0..{Elements.Count}).");
+
+        return Elements[index];
     }
 
     public void SetElement(int index, T value)

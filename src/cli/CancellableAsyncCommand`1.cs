@@ -1,6 +1,6 @@
 namespace Vezel.Novadrop.Cli;
 
-abstract class CancellableAsyncCommand<TSettings> : AsyncCommand<TSettings>
+internal abstract class CancellableAsyncCommand<TSettings> : AsyncCommand<TSettings>
     where TSettings : CommandSettings
 {
     public override sealed async Task<int> ExecuteAsync(CommandContext context, TSettings settings)
@@ -23,9 +23,11 @@ abstract class CancellableAsyncCommand<TSettings> : AsyncCommand<TSettings>
 
         await PreExecuteAsync(expando, settings, token).ConfigureAwait(false);
 
+        int code;
+
         try
         {
-            return await AnsiConsole.Progress()
+            code = await AnsiConsole.Progress()
                 .Columns(
                     new ProgressBarColumn
                     {
@@ -47,10 +49,10 @@ abstract class CancellableAsyncCommand<TSettings> : AsyncCommand<TSettings>
         {
             return 1;
         }
-        finally
-        {
-            await PostExecuteAsync(expando, settings, token).ConfigureAwait(false);
-        }
+
+        await PostExecuteAsync(expando, settings, token).ConfigureAwait(false);
+
+        return code;
     }
 
     protected virtual Task PreExecuteAsync(dynamic expando, TSettings settings, CancellationToken cancellationToken)

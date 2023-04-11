@@ -1,10 +1,10 @@
 namespace Vezel.Novadrop.Cli;
 
-static class CliExtensions
+internal static class CliExtensions
 {
-    sealed class ProgressTaskWrapper : IDisposable
+    private sealed class ProgressTaskWrapper : IDisposable
     {
-        readonly ProgressTask _task;
+        private readonly ProgressTask _task;
 
         public ProgressTaskWrapper(ProgressContext context, string description, int goal, bool indeterminate)
         {
@@ -39,8 +39,7 @@ static class CliExtensions
         return result;
     }
 
-    public static async Task RunTaskAsync(
-        this ProgressContext context, string description, Func<Task> function)
+    public static async Task RunTaskAsync(this ProgressContext context, string description, Func<Task> function)
     {
         _ = await context.RunTaskAsync(description, async () =>
         {
@@ -55,7 +54,7 @@ static class CliExtensions
     {
         using var task = new ProgressTaskWrapper(context, description, goal, false);
 
-        return await function(() => task.Increment()).ConfigureAwait(false);
+        return await function(task.Increment).ConfigureAwait(false);
     }
 
     public static async Task RunTaskAsync(

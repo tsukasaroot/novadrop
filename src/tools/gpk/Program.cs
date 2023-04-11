@@ -1,18 +1,11 @@
-namespace Vezel.Novadrop;
+AnsiConsole.Profile.Capabilities.Ansi = !Console.IsOutputRedirected && !Console.IsErrorRedirected;
 
-static class Program
-{
-    static Task<int> Main(string[] args)
-    {
-        // TODO: Add commands.
+var app = new CommandApp();
 
-        var app = new CommandApp();
+// TODO: Add commands.
+app.Configure(cfg =>
+    cfg
+        .SetApplicationName("novadrop-gpk")
+        .PropagateExceptions());
 
-        app.Configure(cfg =>
-            cfg
-                .SetApplicationName("novadrop-gpk")
-                .PropagateExceptions());
-
-        return app.RunAsync(args);
-    }
-}
+return await app.RunAsync(args);

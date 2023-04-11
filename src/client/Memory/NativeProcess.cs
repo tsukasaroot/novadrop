@@ -6,7 +6,7 @@ using static Windows.Win32.WindowsPInvoke;
 
 namespace Vezel.Novadrop.Memory;
 
-public sealed class NativeProcess : IDisposable
+public sealed unsafe class NativeProcess : IDisposable
 {
     public int Id { get; }
 
@@ -18,16 +18,15 @@ public sealed class NativeProcess : IDisposable
 
     public IEnumerable<NativeModule> Modules
     {
-        [SuppressMessage("", "CA1065")]
         get
         {
-            _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+            Check.Usable(!_disposed, this);
 
-            return EnumerateModules();
+            return GetModules();
         }
     }
 
-    int _disposed;
+    private volatile bool _disposed;
 
     public NativeProcess(int id)
     {
@@ -43,17 +42,17 @@ public sealed class NativeProcess : IDisposable
 
     ~NativeProcess()
     {
-        Free();
+        DisposeCore();
     }
 
     public void Dispose()
     {
-        Free();
+        DisposeCore();
 
         GC.SuppressFinalize(this);
     }
 
-    static PAGE_PROTECTION_FLAGS TranslateProtection(MemoryProtection protection)
+    private static PAGE_PROTECTION_FLAGS TranslateProtection(MemoryProtection protection)
     {
         return protection switch
         {
@@ -77,16 +76,13 @@ public sealed class NativeProcess : IDisposable
         };
     }
 
-    IEnumerable<NativeModule> EnumerateModules()
+    private IEnumerable<NativeModule> GetModules()
     {
-        var pid = (uint)Id;
-
         SafeFileHandle snap;
 
-        while (true)
+        while ((snap = CreateToolhelp32Snapshot_SafeHandle(
+            CREATE_TOOLHELP_SNAPSHOT_FLAGS.TH32CS_SNAPMODULE, (uint)Id)).IsInvalid)
         {
-            snap = CreateToolhelp32Snapshot_SafeHandle(CREATE_TOOLHELP_SNAPSHOT_FLAGS.TH32CS_SNAPMODULE, pid);
-
             if (!snap.IsInvalid)
                 break;
 
@@ -98,52 +94,60 @@ public sealed class NativeProcess : IDisposable
 
         using (snap)
         {
-            var me = new MODULEENTRY32
+            var entry = new MODULEENTRY32W
             {
-                dwSize = (uint)Unsafe.SizeOf<MODULEENTRY32>(),
+                dwSize = (uint)Unsafe.SizeOf<MODULEENTRY32W>(),
             };
 
-            if (!Module32First(snap, ref me))
-                yield break;
+            var result = Module32FirstW(snap, ref entry);
 
-            do
+            while (true)
             {
-                if (me.dwSize != Unsafe.SizeOf<MODULEENTRY32>())
-                    continue;
-
-                unsafe NativeModule CreateModule(ref MODULEENTRY32 entry)
+                if (!result)
                 {
+                    if (Marshal.GetLastPInvokeError() != (int)WIN32_ERROR.ERROR_NO_MORE_FILES)
+                        throw new Win32Exception();
+
+                    break;
+                }
+
+                NativeModule CreateModule(in MODULEENTRY32W entry)
+                {
+                    // Cannot use unsafe code in iterators...
+                    using var modHandle = new SafeFileHandle(entry.hModule, false);
+
                     var arr = new char[MAX_PATH];
 
                     uint len;
 
                     fixed (char* p = arr)
-                        while ((len = K32GetModuleBaseName(
-                            (HANDLE)Handle.DangerousGetHandle(), entry.hModule, p, (uint)arr.Length)) >= arr.Length)
+                        while ((len = K32GetModuleBaseNameW(Handle, modHandle, p, (uint)arr.Length)) >= arr.Length)
                             Array.Resize(ref arr, (int)len);
 
-                    return len == 0
-                        ? throw new Win32Exception()
-                        : new(
+                    return len != 0
+                        ? new(
                             arr.AsSpan(0, (int)len).ToString(),
-                            new(Accessor, (NativeAddress)(nuint)entry.modBaseAddr, entry.modBaseSize));
+                            new(Accessor, (NativeAddress)(nuint)entry.modBaseAddr, entry.modBaseSize))
+                        : throw new Win32Exception();
                 }
 
-                yield return CreateModule(ref me);
+                yield return CreateModule(entry);
+
+                result = Module32NextW(snap, ref entry);
             }
-            while (Module32Next(snap, ref me));
         }
     }
 
-    void Free()
+    private void DisposeCore()
     {
-        if (Interlocked.Exchange(ref _disposed, 1) == 0)
-            Handle.Dispose();
+        _disposed = true;
+
+        Handle.Dispose();
     }
 
-    public unsafe NativeAddress Alloc(nuint length, MemoryProtection protection)
+    public NativeAddress Alloc(nuint length, MemoryProtection protection)
     {
-        _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+        Check.Usable(!_disposed, this);
 
         return VirtualAllocEx(
             Handle,
@@ -155,78 +159,89 @@ public sealed class NativeProcess : IDisposable
             : throw new Win32Exception();
     }
 
-    public unsafe void Free(NativeAddress address)
+    public void Free(NativeAddress address)
     {
-        _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+        Check.Usable(!_disposed, this);
 
         if (!VirtualFreeEx(Handle, (void*)(nuint)address, 0, VIRTUAL_FREE_TYPE.MEM_RELEASE))
             throw new Win32Exception();
     }
 
-    public unsafe void Protect(NativeAddress address, nuint length, MemoryProtection protection)
+    public void Protect(NativeAddress address, nuint length, MemoryProtection protection)
     {
-        _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+        Check.Usable(!_disposed, this);
 
         if (!VirtualProtectEx(Handle, (void*)(nuint)address, length, TranslateProtection(protection), out _))
             throw new Win32Exception();
     }
 
-    public unsafe void Read(NativeAddress address, Span<byte> buffer)
+    public void Read(NativeAddress address, scoped Span<byte> buffer)
     {
-        _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+        Check.Usable(!_disposed, this);
 
         fixed (byte* p = buffer)
             if (!ReadProcessMemory(Handle, (void*)(nuint)address, p, (nuint)buffer.Length, null))
                 throw new Win32Exception();
     }
 
-    public unsafe void Write(NativeAddress address, ReadOnlySpan<byte> buffer)
+    public void Write(NativeAddress address, scoped ReadOnlySpan<byte> buffer)
     {
-        _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+        Check.Usable(!_disposed, this);
 
         fixed (byte* p = buffer)
             if (!WriteProcessMemory(Handle, (void*)(nuint)address, p, (nuint)buffer.Length, null))
                 throw new Win32Exception();
     }
 
-    public unsafe void Flush(NativeAddress address, nuint length)
+    public void Flush(NativeAddress address, nuint length)
     {
-        _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+        Check.Usable(!_disposed, this);
 
         if (!FlushInstructionCache(Handle, (void*)(nuint)address, length))
             throw new Win32Exception();
     }
 
-    unsafe void ForEachThread(Func<int, bool> predicate, Action<uint, SafeFileHandle> action)
+    private void ForEachThread(Func<int, bool> predicate, Action<uint, SafeFileHandle> action)
     {
-        ArgumentNullException.ThrowIfNull(predicate);
-        _ = _disposed == 0 ? true : throw new ObjectDisposedException(GetType().Name);
+        Check.Null(predicate);
+        Check.Usable(!_disposed, this);
 
         var pid = (uint)Id;
+
         using var snap = CreateToolhelp32Snapshot_SafeHandle(CREATE_TOOLHELP_SNAPSHOT_FLAGS.TH32CS_SNAPTHREAD, pid);
 
         if (snap.IsInvalid)
             throw new Win32Exception();
 
-        var te = new THREADENTRY32
+        var entry = new THREADENTRY32
         {
             dwSize = (uint)sizeof(THREADENTRY32),
         };
 
-        if (!Thread32First(snap, ref te))
-            return;
+        var result = Thread32First(snap, ref entry);
 
-        do
+        while (true)
         {
-            if (te.dwSize != sizeof(THREADENTRY32) || te.th32OwnerProcessID != pid || !predicate((int)te.th32ThreadID))
+            if (!result)
+            {
+                if (Marshal.GetLastPInvokeError() != (int)WIN32_ERROR.ERROR_NO_MORE_FILES)
+                    throw new Win32Exception();
+
+                break;
+            }
+
+            if (entry.dwSize != sizeof(THREADENTRY32) ||
+                entry.th32OwnerProcessID != pid ||
+                !predicate((int)entry.th32ThreadID))
                 continue;
 
-            using var handle = OpenThread_SafeHandle(THREAD_ACCESS_RIGHTS.THREAD_ALL_ACCESS, false, te.th32ThreadID);
+            using var handle = OpenThread_SafeHandle(THREAD_ACCESS_RIGHTS.THREAD_ALL_ACCESS, false, entry.th32ThreadID);
 
             if (!handle.IsInvalid)
-                action(te.th32ThreadID, handle);
+                action(entry.th32ThreadID, handle);
+
+            result = Thread32Next(snap, ref entry);
         }
-        while (Thread32Next(snap, ref te));
     }
 
     public (int Id, int Count)[] Suspend(Func<int, bool> predicate)

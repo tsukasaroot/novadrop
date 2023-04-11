@@ -5,23 +5,27 @@ using Vezel.Novadrop.Data.Serialization.Tables;
 
 namespace Vezel.Novadrop.Data.Serialization;
 
-sealed class DataCenterWriter
+internal sealed class DataCenterWriter
 {
-    readonly DataCenterHeader _header;
+    private readonly DataCenterHeader _header;
 
-    readonly DataCenterKeysTableWriter _keys;
+    private readonly DataCenterKeysTableWriter _keys;
 
-    readonly DataCenterSegmentedRegion<DataCenterRawAttribute> _attributes = new();
+    private readonly DataCenterSegmentedRegion<DataCenterRawAttribute> _attributes = new();
 
-    readonly DataCenterSegmentedRegion<DataCenterRawNode> _nodes = new();
+    private readonly Dictionary<int, List<(DataCenterAddress, int)>> _attributeCache = new();
 
-    readonly DataCenterStringTableWriter _values = new(DataCenterConstants.ValueTableSize, false);
+    private readonly DataCenterSegmentedRegion<DataCenterRawNode> _nodes = new();
 
-    readonly DataCenterStringTableWriter _names = new(DataCenterConstants.NameTableSize, true);
+    private readonly Dictionary<int, List<(DataCenterAddress, int)>> _nodeCache = new();
 
-    readonly DataCenterFooter _footer = new();
+    private readonly DataCenterStringTableWriter _values = new(DataCenterConstants.ValueTableSize, false);
 
-    readonly DataCenterSaveOptions _options;
+    private readonly DataCenterStringTableWriter _names = new(DataCenterConstants.NameTableSize, true);
+
+    private readonly DataCenterFooter _footer = new();
+
+    private readonly DataCenterSaveOptions _options;
 
     public DataCenterWriter(DataCenterSaveOptions options)
     {
@@ -33,8 +37,18 @@ sealed class DataCenterWriter
         _options = options;
     }
 
-    void ProcessTree(DataCenterNode root, CancellationToken cancellationToken)
+    private void ProcessTree(DataCenterNode root, CancellationToken cancellationToken)
     {
+        static int GetCollectionHashCode<T>(List<T> collection)
+        {
+            var hash = default(HashCode);
+
+            foreach (var item in collection)
+                hash.Add(item);
+
+            return hash.ToHashCode();
+        }
+
         static DataCenterAddress AllocateRange<T>(DataCenterSegmentedRegion<T> region, int count, string description)
             where T : unmanaged, IDataCenterItem
         {
@@ -61,10 +75,9 @@ sealed class DataCenterWriter
             {
                 segIdx = region.Segments.Count;
 
-                if (segIdx > max.SegmentIndex)
-                    throw new InvalidOperationException($"{description} region is full ({segIdx} segments).");
+                Check.Operation(segIdx <= max.SegmentIndex, $"{description} region is full ({segIdx} segments).");
 
-                segment = new DataCenterRegion<T>();
+                segment = new();
 
                 region.Segments.Add(segment);
             }
@@ -73,6 +86,76 @@ sealed class DataCenterWriter
                 segment.Elements.Add(default);
 
             return new((ushort)segIdx, (ushort)elemIdx);
+        }
+
+        static void WriteRange<T>(
+            DataCenterSegmentedRegion<T> region,
+            Dictionary<int, List<(DataCenterAddress, int)>> cache,
+            List<T> elements,
+            DataCenterAddress address)
+            where T : unmanaged, IDataCenterItem, IEquatable<T>
+        {
+            var i = 0;
+
+            foreach (var item in elements)
+            {
+                region.SetElement(new(address.SegmentIndex, (ushort)(address.ElementIndex + i)), item);
+
+                i++;
+            }
+
+            ref var ranges = ref CollectionsMarshal.GetValueRefOrAddDefault(
+                cache, GetCollectionHashCode(elements), out _);
+
+            ranges ??= new();
+
+            ranges.Add((address, elements.Count));
+        }
+
+        static bool TryDeduplicateElements<T>(
+            DataCenterSegmentedRegion<T> region,
+            Dictionary<int, List<(DataCenterAddress, int)>> cache,
+            List<T> elements,
+            out DataCenterAddress address)
+            where T : unmanaged, IDataCenterItem, IEquatable<T>
+        {
+            if (cache.TryGetValue(GetCollectionHashCode(elements), out var ranges))
+            {
+                foreach (var (cachedAddr, cachedCount) in ranges)
+                {
+                    if (elements.Count != cachedCount)
+                        continue;
+
+                    var i = 0;
+                    var good = true;
+
+                    foreach (var element in elements)
+                    {
+                        var cachedElement = region.GetElement(
+                            new(cachedAddr.SegmentIndex, (ushort)(cachedAddr.ElementIndex + i)));
+
+                        if (!element.Equals(cachedElement))
+                        {
+                            good = false;
+
+                            break;
+                        }
+
+                        i++;
+                    }
+
+                    if (!good)
+                        continue;
+
+                    address = cachedAddr;
+
+                    return true;
+                }
+            }
+
+            address = DataCenterAddress.MaxValue;
+
+            return false;
         }
 
         var comparer = Comparer<DataCenterNode>.Create((x, y) =>
@@ -108,7 +191,7 @@ sealed class DataCenterWriter
             return cmp;
         });
 
-        void WriteTree(DataCenterNode node, DataCenterAddress address)
+        DataCenterRawNode WriteTree(DataCenterNode node)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -133,10 +216,7 @@ sealed class DataCenterWriter
 
                 attributes.Sort((x, y) => x.Index.CompareTo(y.Index));
 
-                attrCount = attributes.Count;
-                attrAddr = AllocateRange(_attributes, attrCount, "Attribute");
-
-                var i = 0;
+                var rawAttributes = new List<DataCenterRawAttribute>(attributes.Count);
 
                 foreach (var (index, value) in attributes)
                 {
@@ -177,14 +257,21 @@ sealed class DataCenterWriter
                             throw new UnreachableException();
                     }
 
-                    _attributes.SetElement(new(attrAddr.SegmentIndex, (ushort)(attrAddr.ElementIndex + i)), new()
+                    rawAttributes.Add(new()
                     {
                         NameIndex = (ushort)index,
                         TypeInfo = (ushort)(ext << 2 | code),
                         Value = result,
                     });
+                }
 
-                    i++;
+                attrCount = rawAttributes.Count;
+
+                if (!TryDeduplicateElements(_attributes, _attributeCache, rawAttributes, out attrAddr))
+                {
+                    attrAddr = AllocateRange(_attributes, attrCount, "Attribute");
+
+                    WriteRange(_attributes, _attributeCache, rawAttributes, attrAddr);
                 }
             }
 
@@ -194,17 +281,24 @@ sealed class DataCenterWriter
             if (node.HasChildren)
             {
                 var children = node.Children;
+                var rawChildren = new List<DataCenterRawNode>(children.Count);
 
-                childCount = children.Count;
-                childAddr = AllocateRange(_nodes, childCount, "Node");
+                foreach (var child in children.OrderBy(n => n, comparer))
+                    rawChildren.Add(WriteTree(child));
 
-                foreach (var (i, child) in children.OrderBy(n => n, comparer).Select((n, i) => (i, n)))
-                    WriteTree(child, new(childAddr.SegmentIndex, (ushort)(childAddr.ElementIndex + i)));
+                childCount = rawChildren.Count;
+
+                if (!TryDeduplicateElements(_nodes, _nodeCache, rawChildren, out childAddr))
+                {
+                    childAddr = AllocateRange(_nodes, childCount, "Node");
+
+                    WriteRange(_nodes, _nodeCache, rawChildren, childAddr);
+                }
             }
 
             var keys = node.Keys;
 
-            _nodes.SetElement(address, new()
+            return new()
             {
                 NameIndex = (ushort)_names.GetString(node.Name).Index,
                 KeysInfo = (ushort)(_keys.AddKeys(
@@ -216,14 +310,14 @@ sealed class DataCenterWriter
                 ChildCount = (ushort)childCount,
                 AttributeAddress = attrAddr,
                 ChildAddress = childAddr,
-            });
+            };
         }
 
         // The tree needs to be sorted according to the index of name strings. So we must walk the entire tree and
         // ensure that all names have been added to the table before we actually write the tree.
         DataCenterNameTree.Collect(root, s => _names.AddString(s), cancellationToken);
 
-        WriteTree(root, AllocateRange(_nodes, 1, "Node"));
+        _nodes.SetElement(AllocateRange(_nodes, 1, "Node"), WriteTree(root));
     }
 
     [SuppressMessage("", "CA5401")]

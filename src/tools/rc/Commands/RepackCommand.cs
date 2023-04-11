@@ -1,7 +1,7 @@
 namespace Vezel.Novadrop.Commands;
 
 [SuppressMessage("", "CA1812")]
-sealed class RepackCommand : CancellableAsyncCommand<RepackCommand.RepackCommandSettings>
+internal sealed class RepackCommand : CancellableAsyncCommand<RepackCommand.RepackCommandSettings>
 {
     public sealed class RepackCommandSettings : CommandSettings
     {
@@ -37,7 +37,7 @@ sealed class RepackCommand : CancellableAsyncCommand<RepackCommand.RepackCommand
     protected override async Task<int> ExecuteAsync(
         dynamic expando, RepackCommandSettings settings, ProgressContext progress, CancellationToken cancellationToken)
     {
-        Log.WriteLine($"Repacking [cyan]{settings.Input}[/] to [cyan]{settings.Output}[/]...");
+        Log.MarkupLineInterpolated($"Repacking [cyan]{settings.Input}[/] to [cyan]{settings.Output}[/]...");
 
         var rc = await progress.RunTaskAsync(
             "Load resource container",

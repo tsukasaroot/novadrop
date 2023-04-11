@@ -1,10 +1,10 @@
 namespace Vezel.Novadrop;
 
-sealed class DataSheetValidationHandler
+internal sealed class DataSheetValidationHandler
 {
     public bool HasProblems => _problems.Count != 0;
 
-    readonly List<(FileInfo File, int, int, XmlSeverityType, string)> _problems = new();
+    private readonly List<(FileInfo File, int, int, XmlSeverityType, string)> _problems = new();
 
     public void Print()
     {
@@ -28,13 +28,13 @@ sealed class DataSheetValidationHandler
                     _ => throw new UnreachableException(),
                 };
 
-                Log.WriteLine($"  [[[{color}]{type}[/]]] ([blue]{line}[/],[blue]{col}[/]): {msg}");
+                Log.MarkupLineInterpolated($"  [[[{color}]{type}[/]]] ([blue]{line}[/],[blue]{col}[/]): {msg}");
             }
 
             var remainingProblems = fileGroup.Count() - shownProblems.Length;
 
             if (remainingProblems != 0)
-                Log.WriteLine($"    ... [orange]{remainingProblems}[/] more problem(s) ...");
+                Log.MarkupLineInterpolated($"    ... [darkorange]{remainingProblems}[/] more problem(s) ...");
         }
 
         Log.WriteLine();

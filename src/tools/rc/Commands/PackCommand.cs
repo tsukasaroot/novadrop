@@ -1,7 +1,7 @@
 namespace Vezel.Novadrop.Commands;
 
 [SuppressMessage("", "CA1812")]
-sealed class PackCommand : CancellableAsyncCommand<PackCommand.PackCommandSettings>
+internal sealed class PackCommand : CancellableAsyncCommand<PackCommand.PackCommandSettings>
 {
     public sealed class PackCommandSettings : CommandSettings
     {
@@ -28,7 +28,7 @@ sealed class PackCommand : CancellableAsyncCommand<PackCommand.PackCommandSettin
     protected override async Task<int> ExecuteAsync(
         dynamic expando, PackCommandSettings settings, ProgressContext progress, CancellationToken cancellationToken)
     {
-        Log.WriteLine($"Packing [cyan]{settings.Input}[/] to [cyan]{settings.Output}[/]...");
+        Log.MarkupLineInterpolated($"Packing [cyan]{settings.Input}[/] to [cyan]{settings.Output}[/]...");
 
         var files = await progress.RunTaskAsync(
             "Gather resource files",

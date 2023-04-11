@@ -3,7 +3,7 @@ using Vezel.Novadrop.Scanners;
 namespace Vezel.Novadrop.Commands;
 
 [SuppressMessage("", "CA1812")]
-sealed class ScanCommand : CancellableAsyncCommand<ScanCommand.ScanCommandSettings>
+internal sealed class ScanCommand : CancellableAsyncCommand<ScanCommand.ScanCommandSettings>
 {
     public sealed class ScanCommandSettings : CommandSettings
     {
@@ -21,7 +21,7 @@ sealed class ScanCommand : CancellableAsyncCommand<ScanCommand.ScanCommandSettin
         }
     }
 
-    static readonly ReadOnlyMemory<GameScanner> _scanners = new GameScanner[]
+    private static readonly ReadOnlyMemory<GameScanner> _scanners = new GameScanner[]
     {
         new ClientVersionScanner(),
         new DataCenterScanner(),
@@ -46,19 +46,20 @@ sealed class ScanCommand : CancellableAsyncCommand<ScanCommand.ScanCommandSettin
 
         if (proc == null)
         {
-            Log.WriteLine($"Could not find the TERA process.");
+            Log.WriteLine("Could not find the TERA process.");
 
             return 1;
         }
 
         if (proc.MainModule?.ModuleName != "TERA.exe")
         {
-            Log.WriteLine($"Process [cyan]{proc.Id}[/] does not look like TERA.");
+            Log.MarkupLineInterpolated($"Process [cyan]{proc.Id}[/] does not look like TERA.");
 
             return 1;
         }
 
-        Log.WriteLine($"Scanning TERA process [cyan]{proc.Id}[/] and writing results to [cyan]{settings.Output}[/]...");
+        Log.MarkupLineInterpolated(
+            $"Scanning TERA process [cyan]{proc.Id}[/] and writing results to [cyan]{settings.Output}[/]...");
 
         NativeAddress teraExeBase;
         byte[] teraExeImage;
@@ -107,7 +108,7 @@ sealed class ScanCommand : CancellableAsyncCommand<ScanCommand.ScanCommandSettin
         dynamic expando, ScanCommandSettings settings, CancellationToken cancellationToken)
     {
         foreach (var name in (List<string>)expando.Failures)
-            Log.WriteLine($"[blue]{name}[/] failed to retrieve information from the TERA process.");
+            Log.MarkupLineInterpolated($"[blue]{name}[/] failed to retrieve information from the TERA process.");
 
         return Task.CompletedTask;
     }

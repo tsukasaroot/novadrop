@@ -10,11 +10,11 @@ public abstract class GamePatch
 
     protected MemoryWindow Window { get; }
 
-    bool _initialized;
+    private bool _initialized;
 
     private protected GamePatch(NativeProcess process)
     {
-        ArgumentNullException.ThrowIfNull(process);
+        Check.Null(process);
 
         Process = process;
         Window = process.MainModule.Window;
@@ -41,7 +41,7 @@ public abstract class GamePatch
 
     public void Toggle()
     {
-        _ = _initialized ? true : throw new InvalidOperationException();
+        Check.Operation(_initialized);
 
         try
         {
